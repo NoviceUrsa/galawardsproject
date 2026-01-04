@@ -1,9 +1,11 @@
 import os
+import json
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ConversationHandler, filters, ContextTypes
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
+
 
 # Google Sheets setup
 SHEET_ID = "1yPXXNyXGNFV_s9kEF6N-bco60lpiPdOTcjnnb0Pwtow"
@@ -49,7 +51,13 @@ DISPO_OPTIONS = [
 
 def get_sheet():
     """Initialize and return Google Sheets client"""
-    creds = Credentials.from_service_account_file('credentials.json', scopes=SCOPES)
+    # Check if credentials are in environment variable
+    if os.environ.get('GOOGLE_CREDENTIALS'):
+        creds_dict = json.loads(os.environ.get('GOOGLE_CREDENTIALS'))
+        creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
+    else:
+        creds = Credentials.from_service_account_file('credentials.json', scopes=SCOPES)
+    
     client = gspread.authorize(creds)
     sheet = client.open_by_key(SHEET_ID)
     return sheet.worksheet('Template [Edit Here ONLY]')
