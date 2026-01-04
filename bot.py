@@ -68,7 +68,7 @@ def get_sheet():
         
         client = gspread.authorize(creds)
         sheet = client.open_by_key(SHEET_ID)
-        return sheet.worksheet('Template [Edit Here Only]')
+        return sheet.worksheet('Template [Edit Here ONLY]')
     except Exception as e:
         print(f"Error initializing Google Sheets: {e}")
         raise
