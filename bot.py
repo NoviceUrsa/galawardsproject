@@ -51,7 +51,14 @@ def get_sheet():
     """Initialize and return Google Sheets client"""
     try:
         # Check if credentials are in environment variable (for Railway/cloud deployment)
-        if os.environ.get('GOOGLE_CREDENTIALS'):
+        if os.environ.get('GOOGLE_CREDENTIALS_BASE64'):
+            import json
+            import base64
+            # Decode base64 credentials
+            creds_json = base64.b64decode(os.environ.get('GOOGLE_CREDENTIALS_BASE64')).decode('utf-8')
+            creds_dict = json.loads(creds_json)
+            creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
+        elif os.environ.get('GOOGLE_CREDENTIALS'):
             import json
             creds_dict = json.loads(os.environ.get('GOOGLE_CREDENTIALS'))
             creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
