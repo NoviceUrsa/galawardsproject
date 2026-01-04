@@ -1,8 +1,4 @@
-python-telegram-bot==20.7
-gspread
-google-auth
-```
-
-6. Add a `Procfile`:
-```
-worker: python bot.py
+python-telegram-bot==20.8
+gspread==5.12.0
+google-auth==2.23.0
+google-auth-oauthlib==1.1.0
