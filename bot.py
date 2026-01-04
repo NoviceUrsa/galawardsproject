@@ -53,34 +53,63 @@ DISPO_OPTIONS = [
 def get_sheet():
     """Initialize and return Google Sheets client"""
     try:
-        # Check if credentials are in environment variable (for Railway/cloud deployment)
-        if os.environ.get('GOOGLE_CREDENTIALS'):
-            import json
-            creds_json = os.environ.get('GOOGLE_CREDENTIALS')
-            print("Using GOOGLE_CREDENTIALS from environment")
-            try:
-                creds_dict = json.loads(creds_json)
-                print("✓ JSON parsed successfully")
-                creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
-                print("✓ Credentials created successfully")
-            except json.JSONDecodeError as e:
-                print(f"❌ JSON decode error: {e}")
-                raise
-        elif os.environ.get('GOOGLE_CREDENTIALS_BASE64'):
-            import json
-            import base64
-            print("Using GOOGLE_CREDENTIALS_BASE64 from environment")
-            # Decode base64 credentials
-            creds_json = base64.b64decode(os.environ.get('GOOGLE_CREDENTIALS_BASE64')).decode('utf-8')
-            creds_dict = json.loads(creds_json)
-            creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
-        else:
-            # Use credentials.json file (for local deployment)
+        creds = None
+        
+        # Priority 1: Try credentials.json file first (works for both local and Railway)
+        if os.path.exists('credentials.json'):
             print("Using credentials.json file")
             creds = Credentials.from_service_account_file('credentials.json', scopes=SCOPES)
+            print("✓ Credentials loaded from file")
         
+        # Priority 2: Check for JSON string credentials
+        elif os.environ.get('GOOGLE_CREDENTIALS'):
+            print("Using GOOGLE_CREDENTIALS from environment")
+            try:
+                creds_json = os.environ.get('GOOGLE_CREDENTIALS')
+                creds_json = creds_json.strip()
+                creds_dict = json.loads(creds_json)
+                
+                # Fix private key newlines if they're escaped
+                if 'private_key' in creds_dict:
+                    creds_dict['private_key'] = creds_dict['private_key'].replace('\\n', '\n')
+                
+                creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
+                print("✓ Credentials loaded from JSON string")
+            except Exception as e:
+                print(f"❌ Error loading credentials from env: {e}")
+                raise
+        
+        # Priority 3: Check for base64 encoded credentials
+        elif os.environ.get('GOOGLE_CREDENTIALS_BASE64'):
+            print("Using GOOGLE_CREDENTIALS_BASE64 from environment")
+            try:
+                encoded = os.environ.get('GOOGLE_CREDENTIALS_BASE64').strip()
+                missing_padding = len(encoded) % 4
+                if missing_padding:
+                    encoded += '=' * (4 - missing_padding)
+                
+                creds_json = base64.b64decode(encoded).decode('utf-8')
+                creds_dict = json.loads(creds_json)
+                
+                # Fix private key newlines
+                if 'private_key' in creds_dict:
+                    creds_dict['private_key'] = creds_dict['private_key'].replace('\\n', '\n')
+                
+                creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
+                print("✓ Credentials loaded from base64")
+            except Exception as e:
+                print(f"❌ Error decoding base64 credentials: {e}")
+                raise
+        else:
+            raise FileNotFoundError("No credentials found: credentials.json file not found and no environment variables set")
+        
+        if not creds:
+            raise ValueError("Failed to load credentials")
+        
+        # Test the credentials by authorizing
         client = gspread.authorize(creds)
         print("✓ gspread authorized successfully")
+        
         spreadsheet = client.open_by_key(SHEET_ID)
         print(f"✓ Spreadsheet opened: {spreadsheet.title}")
         
